@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Labirin Sosiologi: Globalisasi & Era Digital</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tone.js untuk efek suara interaktif -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <!-- Canvas Confetti untuk efek kemenangan -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      overflow: hidden; /* Mencegah scroll pada saat main */
+      background-color: #0f172a;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    /* Kustomisasi gaya scrollbar agar rapi */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
+  </style>
+</head>
+<body class="text-white">
+
+<div id="app" class="relative w-full h-screen">
+  
+  <!-- Layar Mulai (Start Screen) -->
+  <div id="start-screen" class="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 z-50 px-4">
+    <div class="bg-slate-800/80 p-6 md:p-10 rounded-3xl border border-indigo-500/30 shadow-2xl backdrop-blur-sm text-center max-w-2xl w-full">
+      <div class="text-6xl md:text-7xl mb-4">🌍🧑‍🎓</div>
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">Labirin Sosiologi</h1>
+      <p class="text-base md:text-xl mb-3 text-indigo-200 font-semibold">Sosiologi Kelas XII Fase F</p>
+      <p class="text-sm md:text-base lg:text-lg mb-8 text-gray-300">Materi: Masalah Sosial Akibat Globalisasi dan Era Digital. Jelajahi labirin, kumpulkan 20 gulungan misteri, dan jawab pertanyaannya!</p>
+      <button id="btn-start" class="w-full md:w-auto px-8 py-4 md:px-12 md:py-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-full text-lg md:text-xl font-bold transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(79,70,229,0.5)]">
+        Mulai Petualangan
+      </button>
+      <p class="text-xs text-slate-400 mt-6 md:mt-8 hidden md:block">Gunakan tombol Panah / WASD di Laptop, atau Sentuh Layar di HP/Tablet.</p>
+    </div>
+  </div>
+
+  <!-- UI Status Game -->
+  <div id="game-ui" class="absolute top-2 right-2 p-2 flex gap-2 md:gap-4 items-start z-10 pointer-events-none hidden">
+    <div class="bg-slate-800/90 px-3 py-2 md:px-5 md:py-3 rounded-xl md:rounded-2xl border border-slate-700 pointer-events-auto backdrop-blur-md shadow-lg flex flex-col items-center">
+      <span class="text-[10px] md:text-xs text-slate-400 uppercase tracking-wider font-bold">Skor</span>
+      <span id="score-display" class="text-xl md:text-3xl font-black text-green-400">0</span>
+    </div>
+    <div class="bg-slate-800/90 px-3 py-2 md:px-5 md:py-3 rounded-xl md:rounded-2xl border border-slate-700 pointer-events-auto backdrop-blur-md shadow-lg flex flex-col items-center">
+      <span class="text-[10px] md:text-xs text-slate-400 uppercase tracking-wider font-bold">Sisa Soal</span>
+      <span id="remaining-display" class="text-xl md:text-3xl font-black text-yellow-400">20</span>
+    </div>
+  </div>
+
+  <!-- Toast Message -->
+  <div id="toast-msg" class="absolute top-24 left-1/2 -translate-x-1/2 bg-blue-600/90 text-white px-6 py-3 rounded-full shadow-lg border border-blue-400 font-bold text-center z-30 transition-all duration-300 transform -translate-y-20 opacity-0 pointer-events-none">
+    Pesan
+  </div>
+
+  <!-- Kanvas Game -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Modal Pertanyaan -->
+  <div id="question-modal" class="absolute inset-0 bg-black/80 z-40 hidden flex items-center justify-center p-2 md:p-4 backdrop-blur-md">
+    <div class="bg-slate-800 border border-blue-500/50 p-4 md:p-8 rounded-3xl w-full max-w-2xl shadow-2xl max-h-[95vh] overflow-y-auto transform transition-all scale-95 opacity-0 duration-300" id="modal-content">
+      <div class="flex items-center gap-3 mb-2 md:mb-4">
+        <span class="text-3xl">❓</span>
+        <h2 class="text-base md:text-xl font-bold text-white leading-relaxed" id="q-text">Teks Pertanyaan</h2>
+      </div>
+      <div id="q-options" class="flex flex-col gap-2 md:gap-3 mt-4 md:mt-6">
+        <!-- Tombol opsi jawaban disisipkan melalui JS -->
+      </div>
+      <div id="q-feedback" class="mt-4 md:mt-6 p-3 md:p-4 rounded-xl text-base md:text-xl font-bold hidden text-center border"></div>
+      
+      <!-- Box Pembahasan -->
+      <div id="q-explanation" class="mt-3 md:mt-4 p-3 md:p-4 bg-blue-900/30 border border-blue-500/50 rounded-xl text-xs md:text-base text-blue-50 hidden leading-relaxed">
+        <span class="font-bold text-blue-300">Pembahasan:</span> <span id="q-explanation-text"></span>
+      </div>
+
+      <button id="btn-next" class="mt-4 md:mt-6 px-6 py-3 md:py-4 bg-blue-600 hover:bg-blue-500 w-full rounded-2xl font-bold hidden transition-colors text-base md:text-lg">Lanjutkan Perjalanan</button>
+    </div>
+  </div>
+
+  <!-- Modal Game Over -->
+  <div id="gameover-modal" class="absolute inset-0 bg-slate-900/95 z-50 hidden flex flex-col items-center justify-center p-4 backdrop-blur-lg">
+    <div class="text-6xl mb-6">🎉</div>
+    <h2 class="text-4xl md:text-6xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500">Misi Selesai!</h2>
+    <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl mb-8 text-center w-full max-w-sm md:max-w-md">
+      <p class="text-base md:text-lg text-slate-300 mb-2">Pengetahuan Sosiologi Anda Luar Biasa</p>
+      <p class="text-2xl">Total Skor: <span id="final-score" class="font-black text-5xl md:text-6xl text-yellow-400 block mt-3">0 / 20</span></p>
+    </div>
+    <button id="btn-restart" class="w-full md:w-auto px-10 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-full text-xl font-bold shadow-[0_0_20px_rgba(79,70,229,0.5)] transition-transform hover:scale-105">Main Lagi</button>
+  </div>
+
+  <!-- Kontrol Sentuh (D-Pad) untuk Mobile dan Tablet -->
+  <div id="dpad" style="touch-action: none;" class="absolute bottom-12 sm:bottom-16 left-1/2 -translate-x-1/2 md:bottom-12 md:left-12 md:translate-x-0 z-30 lg:hidden grid grid-cols-3 gap-1 sm:gap-2 pointer-events-auto">
+    <div></div>
+    <button class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-slate-700/80 active:bg-slate-500 border border-slate-500 rounded-full flex items-center justify-center text-2xl sm:text-3xl md:text-4xl shadow-[0_0_15px_rgba(0,0,0,0.5)] select-none" id="btn-up">⬆️</button>
+    <div></div>
+    <button class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-slate-700/80 active:bg-slate-500 border border-slate-500 rounded-full flex items-center justify-center text-2xl sm:text-3xl md:text-4xl shadow-[0_0_15px_rgba(0,0,0,0.5)] select-none" id="btn-left">⬅️</button>
+    <button class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-slate-700/80 active:bg-slate-500 border border-slate-500 rounded-full flex items-center justify-center text-2xl sm:text-3xl md:text-4xl shadow-[0_0_15px_rgba(0,0,0,0.5)] select-none" id="btn-down">⬇️</button>
+    <button class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-slate-700/80 active:bg-slate-500 border border-slate-500 rounded-full flex items-center justify-center text-2xl sm:text-3xl md:text-4xl shadow-[0_0_15px_rgba(0,0,0,0.5)] select-none" id="btn-right">➡️</button>
+  </div>
+
+</div>
+
+<script>
+  // ---- DATA SOAL SOSIOLOGI KELAS XII ----
+  // Diambil dan disarikan dari materi Masalah Sosial Akibat Globalisasi dan Era Digital
+  const rawQuestions = [
+    {
+      q: "Perubahan sosial yang radikal dan mendadak, mencakup semua aspek kehidupan dari cara berpikir hingga struktur sosial, sehingga berpotensi menimbulkan masalah sosial disebut...",
+      o: ["A. Perubahan sosial evolutif", "B. Transformasi sosial", "C. Kesenjangan sosial", "D. Integrasi sosial", "E. Mobilitas sosial"],
+      a: 1,
+      p: "Transformasi sosial berbeda dengan perubahan sosial biasa; ia lebih radikal, mendadak, dan merestrukturisasi seluruh aspek kehidupan (budaya, politik, ekonomi)."
+    },
+    {
+      q: "Program penelitian sosial (Management of Social Transformation) yang dibentuk UNESCO pada 1994 untuk menangani dampak negatif pasca perang dingin adalah...",
+      o: ["A. ASEAN", "B. WHO", "C. MOST", "D. IMF", "E. WTO"],
+      a: 2,
+      p: "MOST (Management of Social Transformation) digagas UNESCO untuk mengkaji masalah sosial, mendorong penelitian multinasional, dan menyusun kebijakan."
+    },
+    {
+      q: "Dominasi pada tingkat makro seperti ketergantungan (dependensi) antarnegara sering kali menempatkan negara maju pada posisi...",
+      o: ["A. Memberi bantuan secara cuma-cuma", "B. Menjajah secara fisik militer", "C. Memiliki kontrol dan pengaruh kuat terhadap negara berkembang", "D. Mengisolasi diri dari negara berkembang", "E. Menghapus utang negara berkembang"],
+      a: 2,
+      p: "Dominasi dalam globalisasi merujuk pada pengaruh dan kontrol negara maju (atau institusi seperti WTO, IMF) terhadap negara berkembang yang sering memicu ketergantungan."
+    },
+    {
+      q: "Ketidakmampuan beradaptasi dengan teknologi dan dunia digital (gegar budaya digital) banyak dialami oleh kelompok rentan di bawah ini, KECUALI...",
+      o: ["A. Kalangan lanjut usia (Lansia)", "B. Masyarakat miskin", "C. Masyarakat daerah terpencil", "D. Remaja perkotaan dengan akses internet tinggi", "E. Masyarakat dengan keterbatasan fisik"],
+      a: 3,
+      p: "Kelompok yang kesulitan adaptasi umumnya adalah lansia, masyarakat miskin, dan warga di daerah terpencil akibat keterbatasan akses, pengetahuan, atau fisik."
+    },
+    {
+      q: "Krisis identitas sosial (social identity crisis) pada remaja di era digital sering kali dipicu oleh hal berikut, yaitu...",
+      o: ["A. Terlalu rajin membaca buku sejarah lokal", "B. Penggunaan media sosial berlebih untuk ajang 'panjat sosial' menutupi jati diri asli", "C. Kebijakan blokir internet oleh pemerintah", "D. Lestarinya berbagai kearifan lokal", "E. Kuatnya penanaman nilai keluarga"],
+      a: 1,
+      p: "Krisis identitas di media sosial sering muncul saat seseorang terlalu fokus pada pengakuan (pansos/social climbing) dan meragukan nilai atau identitas aslinya demi citra maya."
+    },
+    {
+      q: "Penjajahan dalam bentuk gaya baru (tanpa kekerasan militer) yang dilakukan melalui kontrol kapitalisme, globalisasi bisnis, dan investasi asing disebut...",
+      o: ["A. Imperialisme kuno", "B. Kolonialisme klasik", "C. Neokolonialisme", "D. Merkantilisme", "E. Chauvinisme"],
+      a: 2,
+      p: "Neokolonialisme adalah penjajahan bentuk baru dimana kontrol tidak lagi secara fisik/militer, melainkan dominasi ekonomi, utang luar negeri, dan korporasi multinasional."
+    },
+    {
+      q: "Kondisi tidak seimbangnya perkembangan budaya, di mana kemajuan teknologi (budaya material) berkembang jauh lebih cepat daripada pola perilaku (nonmaterial), disebut...",
+      o: ["A. Gegar budaya (Culture shock)", "B. Ketertinggalan budaya (Cultural lag)", "C. Asimilasi budaya", "D. Etnosentrisme", "E. Hedonisme"],
+      a: 1,
+      p: "Ketertinggalan budaya (cultural lag) terjadi karena unsur teknologi/fisik maju lebih cepat sementara nilai, mentalitas, atau hukum masyarakat belum siap."
+    },
+    {
+      q: "Gaya hidup yang tidak rasional karena lebih mengutamakan keinginan (wants) dibandingkan kebutuhan pokok (needs) demi gengsi semata disebut...",
+      o: ["A. Produktivitas", "B. Konsumerisme", "C. Pragmatisme", "D. Altruisme", "E. Nasionalisme"],
+      a: 1,
+      p: "Konsumerisme mendorong individu mengonsumsi secara berlebihan atau membeli barang (terutama di e-commerce) tanpa pertimbangan kebutuhan yang rasional."
+    },
+    {
+      q: "Pandangan atau pedoman hidup yang menganggap kesenangan dan kenikmatan materi sebagai tujuan utama, sehingga mengabaikan norma sosial, adalah...",
+      o: ["A. Hedonisme", "B. Materialisme", "C. Konsumerisme", "D. Sekularisme", "E. Individualisme"],
+      a: 0,
+      p: "Hedonisme adalah paham yang menilai kebahagiaan berdasarkan kesenangan duniawi (materi, hiburan) semata, yang rentan melanggar norma sosial dan agama."
+    },
+    {
+      q: "Eksploitasi alam berlebihan demi memenuhi kebutuhan industrialisasi global, seperti pembukaan tambang dan pembalakan hutan, memicu masalah...",
+      o: ["A. Pertumbuhan ekonomi inklusif", "B. Kerusakan lingkungan dan perubahan iklim", "C. Lahirnya budaya lokal baru", "D. Penurunan emisi gas rumah kaca", "E. Pemerataan pembangunan pedesaan"],
+      a: 1,
+      p: "Arus industrialisasi dan produksi massal di era global sering kali mengabaikan daya dukung alam sehingga berujung pada pencemaran dan perubahan iklim."
+    },
+    {
+      q: "Kejahatan dunia maya murni (cyber-dependent crimes) yang dilakukan dengan menyusup secara ilegal ke dalam suatu sistem atau jaringan komputer orang lain disebut...",
+      o: ["A. Cyberbullying", "B. Phishing", "C. Peretasan (Hacking)", "D. White-collar crime", "E. Spionase fisik"],
+      a: 2,
+      p: "Peretasan atau penyusupan sistem (hacking) adalah salah satu bentuk kejahatan siber (cyber-dependent) untuk merusak atau mencuri data di dalam server."
+    },
+    {
+      q: "Bentuk kejahatan siber (penipuan) dengan tujuan mengelabui korban untuk mendapatkan informasi rahasia seperti password, OTP, atau data rekening bank disebut...",
+      o: ["A. Malware", "B. DoS (Denial of Service)", "C. Phishing (Pencurian Data)", "D. Cyberbullying", "E. Grooming"],
+      a: 2,
+      p: "Phishing menggunakan taktik manipulasi psikologis (social engineering) seperti link palsu untuk membujuk orang menyerahkan data rahasianya secara sukarela."
+    },
+    {
+      q: "Sikap bangga dan memprioritaskan penggunaan produk-produk asli buatan Indonesia merupakan contoh upaya mengatasi tantangan globalisasi dalam aspek...",
+      o: ["A. Mengembangkan kecakapan sosial", "B. Memperkuat rasa nasionalisme", "C. Membangun kewirausahaan", "D. Memelihara kearifan lokal", "E. Memelihara kelestarian lingkungan"],
+      a: 1,
+      p: "Mencintai produk dalam negeri dan menguatkan identitas bangsa adalah cara membentengi diri (nasionalisme) dari gempuran dominasi budaya dan pasar asing."
+    },
+    {
+      q: "Pengetahuan masyarakat lokal dalam mengatasi tantangan lingkungan, seperti membangun rumah tahan gempa secara tradisional (misal: Rumah Gadang, Omo Sebua), tergolong sebagai...",
+      o: ["A. Regulasi hukum formal", "B. Gaya hidup modern", "C. Kearifan lokal (Local wisdom)", "D. Intervensi asing", "E. Kebudayaan pop"],
+      a: 2,
+      p: "Kearifan lokal (Local Wisdom) adalah kebijaksanaan tradisional masyarakat setempat untuk menyelesaikan persoalan dan menjaga harmoni dengan alam."
+    },
+    {
+      q: "Untuk mengatasi masalah tumpukan sampah plastik dan elektronik, pemerintah menggalakkan konsep ekonomi sirkular dengan prinsip 5R, yaitu...",
+      o: ["A. Reduce, Reuse, Recycle, Repair, Recovery", "B. Refuse, Reduce, Reuse, Recycle, Rot", "C. Remake, Replace, Restore, Return, Renew", "D. Reuse, Reduce, Respond, React, Restart", "E. Repair, Remove, Return, Relocate, Reuse"],
+      a: 0,
+      p: "Prinsip 5R (Reduce, Reuse, Recycle, Repair, Recovery) digencarkan untuk menjaga kelestarian alam dan mendaur ulang material mentah di sektor industri."
+    },
+    {
+      q: "Solusi inovatif untuk mengatasi masalah pengangguran dan ekonomi sekaligus menjalankan misi yang memberikan dampak sosial positif bagi masyarakat dikenal dengan...",
+      o: ["A. Monopoli pasar", "B. Kewirausahaan sosial (Social entrepreneurship)", "C. Privatisasi BUMN", "D. Bisnis korporat multinasional", "E. Sistem perdagangan bebas"],
+      a: 1,
+      p: "Kewirausahaan sosial (Social Entrepreneurship) tidak hanya mencari keuntungan ekonomi, tapi nilai utamanya adalah memberdayakan masyarakat sipil di sekitarnya."
+    },
+    {
+      q: "Kelelahan fisik dan mental ekstrem (stres) yang dialami seseorang karena intensitas tinggi dan berulang dalam menggunakan perangkat media digital disebut...",
+      o: ["A. Mental breakdown", "B. Digital fatigue", "C. Culture shock", "D. Halusinasi visual", "E. Skizofrenia"],
+      a: 1,
+      p: "Terlalu lama menatap layar gawai menyebabkan kelelahan mental, stres, hingga pegal secara fisik yang disebut Digital Fatigue."
+    },
+    {
+      q: "Fenomena gangguan psikologis dimana seseorang merasa takut, cemas, atau khawatir berlebihan jika tidak memegang telepon seluler (gawai) disebut...",
+      o: ["A. Bipolar", "B. ADHD", "C. Nomophobia", "D. Gaming disorder", "E. Insomnia"],
+      a: 2,
+      p: "Nomophobia (No Mobile Phone Phobia) adalah kecemasan modern di era digital di mana seseorang tidak bisa lepas dari ponselnya."
+    },
+    {
+      q: "Berdasarkan rilis WHO, kecanduan video game online resmi ditetapkan sebagai penyakit gangguan mental. Salah satu ciri kecanduan tersebut adalah...",
+      o: ["A. Menjadikan gim sebagai sumber penghasilan utama yang produktif", "B. Lebih memprioritaskan bermain gim ketimbang aktivitas keseharian", "C. Bermain gim secara disiplin hanya di akhir pekan", "D. Berhenti bermain ketika menyadari dampaknya", "E. Memperluas relasi sosial yang sehat"],
+      a: 1,
+      p: "Seseorang yang kecanduan gim online akan kehilangan kontrol, mengabaikan kewajiban belajar/bekerja, serta fungsi pribadinya terganggu secara berlanjut."
+    },
+    {
+      q: "Untuk menghadapi tantangan dunia yang terus berubah, generasi muda perlu mengembangkan kecakapan sosial (social skills). Salah satu cara mengembangkannya adalah...",
+      o: ["A. Menutup diri dari masuknya semua budaya luar", "B. Gemar membaca untuk meningkatkan literasi dan ikut organisasi positif", "C. Hanya mementingkan nilai akademis sekolah saja", "D. Mengikuti gaya hidup mewah para selebritis di media sosial", "E. Mengisolasi diri di kamar bermain internet"],
+      a: 1,
+      p: "Kecakapan sosial mensyaratkan masyarakat yang adaptif, komunikatif, berliterasi tinggi, dan peduli. Hal ini diasah melalui membaca dan berorganisasi."
+    }
+  ];
+
+  let questions = [];
+  let currentQuestionIndex = 0;
+
+  // ---- TOAST MESSAGE ----
+  let toastTimeout;
+  function showToast(msg, duration = 3000) {
+    const toast = document.getElementById('toast-msg');
+    toast.innerText = msg;
+    toast.classList.remove('-translate-y-20', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+      toast.classList.remove('translate-y-0', 'opacity-100');
+      toast.classList.add('-translate-y-20', 'opacity-0');
+    }, duration);
+  }
+
+  // ---- TONE.JS (EFEK SUARA) ----
+  let synth;
+  let noiseSynth;
+  
+  async function initAudio() {
+    await Tone.start();
+    synth = new Tone.PolySynth(Tone.Synth).toDestination();
+    synth.volume.value = -8;
+
+    // Synth untuk simulasi suara sorak/tepuk tangan (noise)
+    noiseSynth = new Tone.NoiseSynth({
+      noise: { type: 'pink' },
+      envelope: { attack: 0.1, decay: 1.5, sustain: 0.2, release: 2 }
+    }).toDestination();
+    noiseSynth.volume.value = -12;
+  }
+
+  function playCollectSound() {
+    if(synth) synth.triggerAttackRelease(["C5", "E5", "G5"], "8n");
+  }
+  function playCorrectSound() {
+    if(synth) synth.triggerAttackRelease(["G4", "B4", "D5", "G5"], "4n");
+  }
+  function playWrongSound() {
+    if(synth) synth.triggerAttackRelease(["C4", "G3", "Eb3"], "4n");
+  }
+  function playWinSound() {
+    if(synth) {
+      synth.triggerAttackRelease(["C4", "E4", "G4", "C5", "E5", "G5"], "1n");
+    }
+    // Simulasi suara letusan confetti/sorakan penonton
+    if(noiseSynth) {
+      noiseSynth.triggerAttackRelease("2n");
+      setTimeout(() => noiseSynth.triggerAttackRelease("1n"), 300);
+    }
+  }
+
+  // ---- STATE PERMAINAN ----
+  let gameState = 'start'; // start, playing, question, gameover
+  let score = 0;
+  let remaining = 20;
+
+  // Setup Canvas
+  const canvas = document.getElementById('game-canvas');
+  const ctx = canvas.getContext('2d');
+  let camX = 0;
+  let camY = 0;
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Konfigurasi Labirin
+  const cols = 25;
+  const rows = 25;
+  const ts = 45; // Tile size
+  let maze = [];
+
+  // Objek Pemain
+  const player = {
+    gx: 1, gy: 1,
+    px: 0, py: 0,
+    targetPx: 0, targetPy: 0,
+    moving: false,
+    speed: 5
+  };
+
+  // ---- ALGORITMA LABIRIN (DFS) ----
+  function generateMaze() {
+    // Inisialisasi dinding
+    maze = Array(rows).fill().map(() => Array(cols).fill(1));
+    
+    function carve(x, y) {
+      const dirs = [[0, -2], [0, 2], [-2, 0], [2, 0]];
+      dirs.sort(() => Math.random() - 0.5); // Acak arah
+      
+      for (let i = 0; i < dirs.length; i++) {
+        const nx = x + dirs[i][0];
+        const ny = y + dirs[i][1];
+        
+        if (ny > 0 && ny < rows - 1 && nx > 0 && nx < cols - 1 && maze[ny][nx] === 1) {
+          maze[y + dirs[i][1] / 2][x + dirs[i][0] / 2] = 0; // Hancurkan tembok antara
+          maze[ny][nx] = 0; // Hancurkan tembok tujuan
+          carve(nx, ny);
+        }
+      }
+    }
+    
+    maze[1][1] = 0; // Titik awal
+    carve(1, 1);
+
+    // Tentukan Titik Finish (Trophy) di sudut kanan bawah yang kosong
+    let finishPlaced = false;
+    for(let y = rows - 2; y > 0 && !finishPlaced; y--) {
+      for(let x = cols - 2; x > 0 && !finishPlaced; x--) {
+        if(maze[y][x] === 0) {
+          maze[y][x] = 3; // Kode 3 untuk Finish
+          finishPlaced = true;
+        }
+      }
+    }
+
+    // Menyebarkan 20 gulungan misteri (2)
+    let emptyCells = [];
+    for(let y=1; y<rows-1; y++){
+      for(let x=1; x<cols-1; x++){
+        // Pastikan tidak menaruh item di tempat spawn atau di titik finish
+        if(maze[y][x] === 0 && (x !== 1 || y !== 1)){
+          emptyCells.push({x, y});
+        }
+      }
+    }
+    
+    emptyCells.sort(() => Math.random() - 0.5);
+    for(let i=0; i<20; i++){
+      if(emptyCells[i]) {
+        maze[emptyCells[i].y][emptyCells[i].x] = 2; // 2 adalah kode item
+      }
+    }
+  }
+
+  // Shuffle Array (untuk ngacak soal)
+  function shuffle(array) {
+    let currentIndex = array.length, randomIndex;
+    while (currentIndex !== 0) {
+      randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex--;
+      [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+    }
+    return array;
+  }
+
+  // Input Keyboard
+  const keys = {};
+  window.addEventListener('keydown', e => keys[e.code] = true);
+  window.addEventListener('keyup', e => keys[e.code] = false);
+
+  // Input Sentuh (Mobile)
+  function addTouch(id, code) {
+    const el = document.getElementById(id);
+    const press = (e) => { 
+      if(e.cancelable) e.preventDefault(); 
+      keys[code] = true; 
+      el.classList.add('bg-slate-500'); 
+    };
+    const release = (e) => { 
+      if(e.cancelable) e.preventDefault(); 
+      keys[code] = false; 
+      el.classList.remove('bg-slate-500'); 
+    };
+    
+    // Gunakan pointer events agar lebih responsif di berbagai HP (iOS/Android)
+    el.addEventListener('pointerdown', press);
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+    el.addEventListener('pointerout', release);
+    
+    // Event sentuh klasik sebagai cadangan
+    el.addEventListener('touchstart', press, {passive: false});
+    el.addEventListener('touchend', release, {passive: false});
+  }
+  
+  addTouch('btn-up', 'ArrowUp');
+  addTouch('btn-down', 'ArrowDown');
+  addTouch('btn-left', 'ArrowLeft');
+  addTouch('btn-right', 'ArrowRight');
+
+  // Menggambar Grafik
+  function draw() {
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if(gameState === 'start') return;
+
+    // Kamera mengikuti player secara halus dengan batasan (clamp) dan penengah (center)
+    const mazeWidth = cols * ts;
+    const mazeHeight = rows * ts;
+
+    let targetCamX = player.px + ts / 2 - canvas.width / 2;
+    let targetCamY = player.py + ts / 2 - canvas.height / 2;
+
+    // Jika layar lebih besar dari labirin, posisikan labirin persis di tengah
+    if (canvas.width > mazeWidth) {
+      targetCamX = -(canvas.width - mazeWidth) / 2;
+    } else {
+      // Jika tidak, batasi pergerakan kamera agar tidak keluar batas labirin
+      targetCamX = Math.max(0, Math.min(targetCamX, mazeWidth - canvas.width));
+    }
+
+    if (canvas.height > mazeHeight) {
+      targetCamY = -(canvas.height - mazeHeight) / 2;
+    } else {
+      targetCamY = Math.max(0, Math.min(targetCamY, mazeHeight - canvas.height));
+    }
+
+    camX += (targetCamX - camX) * 0.1;
+    camY += (targetCamY - camY) * 0.1;
+
+    ctx.save();
+    ctx.translate(-camX, -camY);
+
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const px = x * ts;
+        const py = y * ts;
+        
+        if (maze[y][x] === 1) {
+          // Tembok
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(px, py, ts, ts);
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(px, py, ts, ts);
+        } else {
+          // Jalan
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(px, py, ts, ts);
+          
+          if (maze[y][x] === 2) {
+            // Item (Gulungan Misteri)
+            ctx.font = '28px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            // Efek melayang sedikit
+            const floatY = Math.sin(Date.now() / 200) * 3;
+            ctx.fillText('📜', px + ts / 2, py + ts / 2 + floatY);
+          } else if (maze[y][x] === 3) {
+            // Titik Finish (Trophy)
+            ctx.font = '32px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const floatY = Math.sin(Date.now() / 200) * 4;
+            ctx.fillText('🏆', px + ts / 2, py + ts / 2 + floatY);
+          }
+        }
+      }
+    }
+
+    // Gambar Pemain (Student Emoji)
+    ctx.fillStyle = '#3b82f6';
+    ctx.beginPath();
+    ctx.arc(player.px + ts / 2, player.py + ts / 2, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = '22px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🧑‍🎓', player.px + ts / 2, player.py + ts / 2);
+
+    ctx.restore();
+  }
+
+  // Update Logika
+  function update() {
+    if (gameState === 'playing') {
+      if (!player.moving) {
+        let dx = 0, dy = 0;
+        if (keys['ArrowUp'] || keys['KeyW']) dy = -1;
+        else if (keys['ArrowDown'] || keys['KeyS']) dy = 1;
+        else if (keys['ArrowLeft'] || keys['KeyA']) dx = -1;
+        else if (keys['ArrowRight'] || keys['KeyD']) dx = 1;
+
+        if (dx !== 0 || dy !== 0) {
+          // Cek tabrakan tembok
+          if (maze[player.gy + dy][player.gx + dx] !== 1) {
+            player.gy += dy;
+            player.gx += dx;
+            player.targetPx = player.gx * ts;
+            player.targetPy = player.gy * ts;
+            player.moving = true;
+          }
+        }
+      } else {
+        // Pemain bergerak menuju target grid
+        if (player.px < player.targetPx) player.px = Math.min(player.targetPx, player.px + player.speed);
+        if (player.px > player.targetPx) player.px = Math.max(player.targetPx, player.px - player.speed);
+        if (player.py < player.targetPy) player.py = Math.min(player.targetPy, player.py + player.speed);
+        if (player.py > player.targetPy) player.py = Math.max(player.targetPy, player.py - player.speed);
+
+        if (player.px === player.targetPx && player.py === player.targetPy) {
+          player.moving = false;
+          // Cek tabrakan dengan item
+          if (maze[player.gy][player.gx] === 2) {
+            maze[player.gy][player.gx] = 0; // Hapus item dari labirin
+            playCollectSound();
+            triggerQuestion();
+          } else if (maze[player.gy][player.gx] === 3) {
+            // Cek titik finish
+            if (remaining <= 0) {
+              showGameOver();
+            } else {
+              showToast("Kumpulkan semua " + remaining + " gulungan misteri sebelum menyelesaikan misi!");
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Game Loop Utama
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // Menampilkan Pertanyaan
+  function triggerQuestion() {
+    gameState = 'question';
+    keys['ArrowUp'] = keys['ArrowDown'] = keys['ArrowLeft'] = keys['ArrowRight'] = false; // Reset keys
+
+    const qData = questions[currentQuestionIndex];
+    document.getElementById('q-text').innerText = `Soal ${20 - remaining + 1}: ${qData.q}`;
+    
+    const optionsContainer = document.getElementById('q-options');
+    optionsContainer.innerHTML = '';
+    
+    qData.o.forEach((optText, index) => {
+      const btn = document.createElement('button');
+      btn.className = 'text-left px-5 py-3 rounded-xl border border-slate-600 bg-slate-700/50 hover:bg-slate-600 hover:border-blue-400 transition-all font-medium';
+      btn.innerText = optText;
+      btn.onclick = () => handleAnswer(index, btn, qData.a);
+      optionsContainer.appendChild(btn);
+    });
+
+    document.getElementById('q-feedback').classList.add('hidden');
+    document.getElementById('q-explanation').classList.add('hidden'); // Sembunyikan saat awal
+    document.getElementById('btn-next').classList.add('hidden');
+    
+    const modal = document.getElementById('question-modal');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+      document.getElementById('modal-content').classList.remove('scale-95', 'opacity-0');
+      document.getElementById('modal-content').classList.add('scale-100', 'opacity-100');
+    }, 10);
+  }
+
+  function handleAnswer(selectedIndex, btnElem, correctIndex) {
+    // Matikan semua tombol setelah dijawab
+    const buttons = document.getElementById('q-options').querySelectorAll('button');
+    buttons.forEach(b => {
+      b.onclick = null;
+      b.classList.remove('hover:bg-slate-600', 'hover:border-blue-400');
+      b.classList.add('opacity-50', 'cursor-not-allowed');
+    });
+
+    const feedback = document.getElementById('q-feedback');
+    feedback.classList.remove('hidden', 'bg-green-900/50', 'text-green-400', 'border-green-500', 'bg-red-900/50', 'text-red-400', 'border-red-500');
+
+    if (selectedIndex === correctIndex) {
+      playCorrectSound();
+      btnElem.classList.remove('bg-slate-700/50', 'border-slate-600');
+      btnElem.classList.add('bg-green-600', 'border-green-400', 'opacity-100', 'text-white');
+      score++;
+      document.getElementById('score-display').innerText = score;
+      
+      feedback.classList.add('bg-green-900/50', 'text-green-400', 'border-green-500');
+      feedback.innerText = "Luar Biasa! Jawaban Anda Benar.";
+    } else {
+      playWrongSound();
+      btnElem.classList.remove('bg-slate-700/50', 'border-slate-600');
+      btnElem.classList.add('bg-red-600', 'border-red-400', 'opacity-100', 'text-white');
+      
+      // Highlight yg benar
+      buttons[correctIndex].classList.remove('bg-slate-700/50', 'border-slate-600', 'opacity-50');
+      buttons[correctIndex].classList.add('bg-green-600', 'border-green-400', 'opacity-100', 'text-white');
+
+      feedback.classList.add('bg-red-900/50', 'text-red-400', 'border-red-500');
+      feedback.innerText = "Oops, Kurang Tepat! Terus belajar ya.";
+    }
+
+    // Tampilkan pembahasan
+    const explanationDiv = document.getElementById('q-explanation');
+    document.getElementById('q-explanation-text').innerText = questions[currentQuestionIndex].p;
+    explanationDiv.classList.remove('hidden');
+
+    document.getElementById('btn-next').classList.remove('hidden');
+  }
+
+  // Tombol Lanjut setelah jawab soal
+  document.getElementById('btn-next').addEventListener('click', () => {
+    document.getElementById('modal-content').classList.remove('scale-100', 'opacity-100');
+    document.getElementById('modal-content').classList.add('scale-95', 'opacity-0');
+    
+    setTimeout(() => {
+      document.getElementById('question-modal').classList.add('hidden');
+      remaining--;
+      document.getElementById('remaining-display').innerText = remaining;
+      currentQuestionIndex++;
+      
+      gameState = 'playing';
+      
+      if(remaining <= 0) {
+        showToast("Semua soal terjawab! Cari Piala (🏆) untuk menyelesaikan permainan.", 5000);
+      }
+    }, 300);
+  });
+
+  function showGameOver() {
+    gameState = 'gameover';
+    playWinSound();
+    
+    // Tembakan Confetti!
+    var duration = 3 * 1000;
+    var end = Date.now() + duration;
+
+    (function frame() {
+      confetti({
+        particleCount: 5,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff']
+      });
+      confetti({
+        particleCount: 5,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff']
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    }());
+
+    document.getElementById('final-score').innerText = `${score} / 20`;
+    document.getElementById('game-ui').classList.add('hidden');
+    document.getElementById('gameover-modal').classList.remove('hidden');
+  }
+
+  // Tombol Mulai
+  document.getElementById('btn-start').addEventListener('click', async () => {
+    await initAudio();
+    startGame();
+  });
+
+  // Tombol Restart
+  document.getElementById('btn-restart').addEventListener('click', () => {
+    document.getElementById('gameover-modal').classList.add('hidden');
+    startGame();
+  });
+
+  function startGame() {
+    score = 0;
+    remaining = 20;
+    currentQuestionIndex = 0;
+    
+    document.getElementById('score-display').innerText = score;
+    document.getElementById('remaining-display').innerText = remaining;
+    
+    // Copy dan acak soal
+    questions = shuffle([...rawQuestions]);
+    
+    generateMaze();
+    
+    player.gx = 1;
+    player.gy = 1;
+    player.px = ts;
+    player.py = ts;
+    player.moving = false;
+    
+    // Atur posisi awal kamera agar langsung berada di tempat yang benar
+    const mazeWidth = cols * ts;
+    const mazeHeight = rows * ts;
+    let targetCamX = player.px + ts / 2 - canvas.width / 2;
+    let targetCamY = player.py + ts / 2 - canvas.height / 2;
+    
+    if (canvas.width > mazeWidth) targetCamX = -(canvas.width - mazeWidth) / 2;
+    else targetCamX = Math.max(0, Math.min(targetCamX, mazeWidth - canvas.width));
+
+    if (canvas.height > mazeHeight) targetCamY = -(canvas.height - mazeHeight) / 2;
+    else targetCamY = Math.max(0, Math.min(targetCamY, mazeHeight - canvas.height));
+    
+    camX = targetCamX;
+    camY = targetCamY;
+
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('game-ui').classList.remove('hidden');
+    
+    gameState = 'playing';
+  }
+
+  // Start Animation Loop
+  window.onload = () => {
+    loop();
+  };
+
+</script>
+</body>
+</html>
